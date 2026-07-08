@@ -1,0 +1,2 @@
+class SteamAPIError(Exception):
+    pass

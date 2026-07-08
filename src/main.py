@@ -1,11 +1,12 @@
 from dotenv import load_dotenv
 import os
 from src.collector.steam_client import SteamClient
+from src.collector.sync import get_connection, sync_owned_games
 
 load_dotenv()
 
 client = SteamClient(api_key=os.environ["STEAM_API_KEY"])
-games = client.get_owned_games(steam_id=os.environ["STEAMSENSE_TARGET_STEAMID"])
+conn = get_connection(host=os.environ["POSTGRES_HOST"], port=int(os.environ["POSTGRES_PORT"]), dbname=os.environ["POSTGRES_DB"], user=os.environ["POSTGRES_USER"], password=os.environ["POSTGRES_PASSWORD"])
+sync_owned_games(client=client, conn=conn, steam_id=os.environ["STEAMSENSE_TARGET_STEAMID"])
 
-print(len(games))
-print(games[0])
+conn.close()

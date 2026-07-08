@@ -1,10 +1,11 @@
 import requests
 
-from src.collector.exceptions import SteamAPIError
+from src.collector.exceptions import SteamAPIError, StoreGameNotFound
 
 
 class SteamClient:
     BASE_URL = "https://api.steampowered.com"
+    STORE_URL = "https://store.steampowered.com/api"
 
     def __init__(self, api_key: str):
         self.api_key = api_key
@@ -24,3 +25,15 @@ class SteamClient:
             raise SteamAPIError(f"SteamAPI returned {response.status_code}")
 
         return response.json()["response"]["games"]
+
+    def get_app_details(self, appid) -> dict:
+        response = requests.get(f"{self.STORE_URL}/appdetails", params={"appids": appid})
+
+        if response.status_code != 200:
+            raise SteamAPIError(f"Steam Store API returned {response.status_code}")
+
+        data = response.json()
+        if data[str(appid)]["success"] is not True:
+            raise StoreGameNotFound(f"Game not found for appid: {appid}")
+
+        return data

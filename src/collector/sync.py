@@ -3,7 +3,7 @@ import time
 
 import psycopg2
 
-from src.collector.exceptions import SteamAPIError, StoreGameNotFound
+from src.collector.exceptions import SteamAPIError, StoreGameNotFound, AchievementsNotFound
 from src.collector.steam_client import SteamClient
 
 
@@ -67,8 +67,8 @@ def sync_owned_games(client: SteamClient, conn, steam_id: str):
                 except (StoreGameNotFound, SteamAPIError) as e:
                     print(f"Failed to fetch store details for appid {appid}: {e}")
                     cur.execute(
-                        "INSERT INTO games (appid, title) VALUES (%s, %s) ON CONFLICT (appid) DO NOTHING",
-                        (appid, "Unknown game" + str(appid)) # yes, this is a problem since a non-null title will not turn it into a placeholder. will fix tomorrow
+                        "INSERT INTO games (appid) VALUES (%s) ON CONFLICT (appid) DO NOTHING",
+                        (appid,)
                     )
                     conn.commit()
 
@@ -79,13 +79,25 @@ def sync_owned_games(client: SteamClient, conn, steam_id: str):
             playtime_minutes = game.get("playtime_forever", 0)
             last_played_raw = game.get("rtime_last_played")
             last_played = datetime.fromtimestamp(last_played_raw).date() if last_played_raw else None
+            achievements_unlocked = None
+
+            try:
+                ach = client.get_player_achievements(steam_id, appid)
+                achievements_unlocked = sum(1 for a in ach if a["achieved"] == 1)
+                time.sleep(1)
+            except (SteamAPIError, AchievementsNotFound) as e:
+                print(f"Exception caught while fetching achievements for appid {appid}: {e}")
 
             cur.execute(
                 """
-                INSERT INTO user_game (steam_id, appid, playtime_minutes, last_played)
-                VALUES (%s, %s, %s, %s)
-                ON CONFLICT (steam_id, appid) DO NOTHING
+                INSERT INTO user_game (steam_id, appid, playtime_minutes, last_played, achievements_unlocked)
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT (steam_id, appid) DO UPDATE SET
+                    playtime_minutes = EXCLUDED.playtime_minutes,
+                    last_played = EXCLUDED.last_played,
+                    achievements_unlocked = EXCLUDED.achievements_unlocked,
+                    updated_at = CURRENT_TIMESTAMP
                 """,
-                (steam_id, appid, playtime_minutes, last_played)
+                (steam_id, appid, playtime_minutes, last_played, achievements_unlocked)
             )
             conn.commit()

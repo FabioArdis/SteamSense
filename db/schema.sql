@@ -8,7 +8,7 @@ CREATE TABLE users (
 CREATE TABLE games(
   appid INT PRIMARY KEY,
 
-  title VARCHAR(255) NOT NULL,
+  title VARCHAR(255),
   release_date DATE,
   price INT CHECK (price >= 0),
   total_achievements INT DEFAULT 0,

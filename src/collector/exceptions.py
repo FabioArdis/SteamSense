@@ -3,3 +3,6 @@ class SteamAPIError(Exception):
 
 class StoreGameNotFound(Exception):
     pass
+
+class AchievementsNotFound(Exception):
+    pass

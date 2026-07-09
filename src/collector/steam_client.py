@@ -1,6 +1,6 @@
 import requests
 
-from src.collector.exceptions import SteamAPIError, StoreGameNotFound
+from src.collector.exceptions import SteamAPIError, StoreGameNotFound, AchievementsNotFound
 
 
 class SteamClient:
@@ -37,3 +37,21 @@ class SteamClient:
             raise StoreGameNotFound(f"Game not found for appid: {appid}")
 
         return data
+
+    def get_player_achievements(self, steam_id: str, appid) -> list[dict]:
+        endpoint = f"{self.BASE_URL}/ISteamUserStats/GetPlayerAchievements/v1/"
+        params = {
+            "key": self.api_key,
+            "steamid": steam_id,
+            "appid": appid
+        }
+
+        response = requests.get(endpoint, params)
+
+        if response.status_code != 200:
+            raise SteamAPIError(f"SteamAPI returned {response.status_code}")
+
+        if not response.json()["playerstats"]["success"]:
+            raise AchievementsNotFound(f"SteamAPI returned no achievements for {appid}")
+
+        return response.json()["playerstats"].get("achievements", [])

@@ -6,3 +6,6 @@ class StoreGameNotFound(Exception):
 
 class AchievementsNotFound(Exception):
     pass
+
+class ReviewsNotFound(Exception):
+    pass

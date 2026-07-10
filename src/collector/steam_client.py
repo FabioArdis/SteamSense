@@ -1,11 +1,11 @@
 import requests
 
-from src.collector.exceptions import SteamAPIError, StoreGameNotFound, AchievementsNotFound
+from src.collector.exceptions import SteamAPIError, StoreGameNotFound, AchievementsNotFound, ReviewsNotFound
 
 
 class SteamClient:
     BASE_URL = "https://api.steampowered.com"
-    STORE_URL = "https://store.steampowered.com/api"
+    STORE_URL = "https://store.steampowered.com"
 
     def __init__(self, api_key: str):
         self.api_key = api_key
@@ -27,7 +27,7 @@ class SteamClient:
         return response.json()["response"]["games"]
 
     def get_app_details(self, appid) -> dict:
-        response = requests.get(f"{self.STORE_URL}/appdetails", params={"appids": appid})
+        response = requests.get(f"{self.STORE_URL}/api/appdetails", params={"appids": appid})
 
         if response.status_code != 200:
             raise SteamAPIError(f"Steam Store API returned {response.status_code}")
@@ -37,6 +37,22 @@ class SteamClient:
             raise StoreGameNotFound(f"Game not found for appid: {appid}")
 
         return data
+
+    def get_app_reviews(self, appid) -> dict:
+        response = requests.get(f"{self.STORE_URL}/appreviews/{appid}?json=1&num_per_page=0")
+
+        if response.status_code != 200:
+            raise SteamAPIError(f"Steam Store API returned {response.status_code}")
+
+        data = response.json()
+        if data["success"] != 1:
+            raise ReviewsNotFound(f"Reviews not found for appid: {appid}")
+
+        return {
+            "total_positive": data["query_summary"]["total_positive"],
+            "total_negative": data["query_summary"]["total_negative"],
+        }
+
 
     def get_player_achievements(self, steam_id: str, appid) -> list[dict]:
         endpoint = f"{self.BASE_URL}/ISteamUserStats/GetPlayerAchievements/v1/"

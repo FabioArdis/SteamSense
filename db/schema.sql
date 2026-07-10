@@ -17,8 +17,8 @@ CREATE TABLE games(
   tags TEXT[] DEFAULT '{}',
 
   metacritic INT,
-  positive_reviews INT DEFAULT 0,
-  negative_reviews INT DEFAULT 0,
+  positive_reviews INT,
+  negative_reviews INT,
 
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(), 
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()

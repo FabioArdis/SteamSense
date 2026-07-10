@@ -3,7 +3,7 @@ import time
 
 import psycopg2
 
-from src.collector.exceptions import SteamAPIError, StoreGameNotFound, AchievementsNotFound
+from src.collector.exceptions import SteamAPIError, StoreGameNotFound, AchievementsNotFound, ReviewsNotFound
 from src.collector.steam_client import SteamClient
 
 
@@ -19,7 +19,7 @@ def is_game_cached(conn, appid: int) -> bool:
     with conn.cursor() as cur:
         cur.execute("""
             SELECT 1 FROM games 
-            WHERE appid = %s AND title IS NOT NULL AND developers != '{}'
+            WHERE appid = %s AND title IS NOT NULL AND developers != '{}' AND positive_reviews IS NOT NULL
         """, (appid,))
         return cur.fetchone() is not None
 
@@ -31,6 +31,7 @@ def sync_owned_games(client: SteamClient, conn, steam_id: str):
             (steam_id,)
         )
         conn.commit()
+
         try:
             owned_games = client.get_owned_games(steam_id)
         except SteamAPIError as e:
@@ -59,10 +60,18 @@ def sync_owned_games(client: SteamClient, conn, steam_id: str):
                     except (ValueError, TypeError):
                         print(f"Failed to parse release date '{release_date_raw}' for appid {appid}")
 
+                    positive_reviews = negative_reviews = None
+                    try:
+                        reviews = client.get_app_reviews(appid)
+                        positive_reviews = reviews["total_positive"]
+                        negative_reviews = reviews["total_negative"]
+                    except (ReviewsNotFound, SteamAPIError) as e:
+                        print(f"Failed to fetch reviews for appid {appid}: {e}")
+
                     cur.execute(
                         """
-                        INSERT INTO games (appid, title, release_date, price, genres, developers, publishers, metacritic, total_achievements)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        INSERT INTO games (appid, title, release_date, price, genres, developers, publishers, metacritic, positive_reviews, negative_reviews, total_achievements)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                         ON CONFLICT (appid) DO UPDATE SET
                             title = excluded.title,
                             release_date = excluded.release_date,
@@ -71,10 +80,12 @@ def sync_owned_games(client: SteamClient, conn, steam_id: str):
                             developers = excluded.developers,
                             publishers = excluded.publishers,
                             metacritic = excluded.metacritic,
+                            positive_reviews = excluded.positive_reviews,
+                            negative_reviews = excluded.negative_reviews,
                             total_achievements = excluded.total_achievements,
                             updated_at = CURRENT_TIMESTAMP
                         """,
-                        (appid, details["name"], release_date_parsed, price, genres, developers, publishers, metacritic, total_achievements)
+                        (appid, details["name"], release_date_parsed, price, genres, developers, publishers, metacritic, positive_reviews, negative_reviews, total_achievements)
                     )
                     conn.commit()
 
@@ -93,8 +104,8 @@ def sync_owned_games(client: SteamClient, conn, steam_id: str):
             playtime_minutes = game.get("playtime_forever", 0)
             last_played_raw = game.get("rtime_last_played")
             last_played = datetime.fromtimestamp(last_played_raw).date() if last_played_raw else None
-            achievements_unlocked = None
 
+            achievements_unlocked = None
             try:
                 ach = client.get_player_achievements(steam_id, appid)
                 achievements_unlocked = sum(1 for a in ach if a["achieved"] == 1)

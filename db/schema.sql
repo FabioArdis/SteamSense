@@ -39,3 +39,12 @@ CREATE TABLE user_game (
 
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+CREATE TABLE bulk_user_game (
+    bulk_user_id BIGINT NOT NULL,
+    game_title VARCHAR(255) NOT NULL,
+
+    playtime_hours REAL NOT NULL,
+
+    PRIMARY KEY (bulk_user_id, game_title)
+);

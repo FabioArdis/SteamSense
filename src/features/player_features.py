@@ -29,7 +29,9 @@ def build_player_features(conn, steam_id: str) -> dict:
             g.developers,
             g.publishers,
             g.release_date,
-            g.total_achievements
+            g.total_achievements,
+            g.positive_reviews,
+            g.negative_reviews
         FROM user_game ug
         JOIN games g ON ug.appid = g.appid
         WHERE ug.steam_id = %s
@@ -52,6 +54,8 @@ def build_player_features(conn, steam_id: str) -> dict:
     ages_in_years = (today - df["release_date"]) / pd.Timedelta(days=365.25)
     average_game_age = ages_in_years.mean()
 
-    # it's still missing the average review score
+    total_reviews = df["positive_reviews"] + df["negative_reviews"]
+    review_ratio = df["positive_reviews"] / total_reviews.where(total_reviews > 0)
+    average_review_score = review_ratio.mean()
 
-    return {"median": median_playtime, "std": std_playtime, "genre_entropy": genre_entropy_value, "developer_entropy_value": developer_entropy_value, "average_game_age": average_game_age}
+    return {"median": median_playtime, "std": std_playtime, "genre_entropy": genre_entropy_value, "developer_entropy_value": developer_entropy_value, "average_game_age": average_game_age, "average_review_score": average_review_score}

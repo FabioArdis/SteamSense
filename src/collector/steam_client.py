@@ -27,7 +27,13 @@ class SteamClient:
         return response.json()["response"]["games"]
 
     def get_app_details(self, appid) -> dict:
-        response = requests.get(f"{self.STORE_URL}/api/appdetails", params={"appids": appid})
+        response = requests.get(
+            f"{self.STORE_URL}/api/appdetails",
+            params={
+                "appids": appid,
+                "l": "english"
+            }
+        )
 
         if response.status_code != 200:
             raise SteamAPIError(f"Steam Store API returned {response.status_code}")

@@ -8,8 +8,9 @@ def normalize_playtime(playtime_minutes: int | float) -> float:
     return min(log_playtime / log_ceiling, 1.0)
 
 def compute_engagement_score(playtime_minutes: int, achievements_unlocked: int | None, total_achievements: int) -> float:
-    # this is actually temporary, we are still missing an extra weight: the reviews
-    # the final weights will be playtime: 0.5, achievements: 0.3, reviews: 0.2
+    # the final weights were supposed to be "playtime: 0.5, achievements: 0.3, reviews: 0.2" but, unlike the
+    # playtime/achievement ratio, a player leaving a review is closer to a personal trait rather than a per-game
+    # behavioral trait (some people never review anything).
     components = [(normalize_playtime(playtime_minutes), 0.7)]
 
     if achievements_unlocked is not None and total_achievements > 0:

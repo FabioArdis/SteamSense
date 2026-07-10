@@ -2,7 +2,7 @@ import math
 
 CEILING_MINUTES = 200 * 60
 
-def normalize_playtime(playtime_minutes: int) -> float:
+def normalize_playtime(playtime_minutes: int | float) -> float:
     log_playtime = math.log1p(playtime_minutes)
     log_ceiling = math.log1p(CEILING_MINUTES)
     return min(log_playtime / log_ceiling, 1.0)

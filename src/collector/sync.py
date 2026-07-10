@@ -17,7 +17,10 @@ def get_connection(host: str, port: int, dbname: str, user: str, password: str):
 
 def is_game_cached(conn, appid: int) -> bool:
     with conn.cursor() as cur:
-        cur.execute("SELECT 1 FROM games WHERE appid = %s AND title IS NOT NULL", (appid,))
+        cur.execute("""
+            SELECT 1 FROM games 
+            WHERE appid = %s AND title IS NOT NULL AND developers != '{}'
+        """, (appid,))
         return cur.fetchone() is not None
 
 
@@ -42,6 +45,8 @@ def sync_owned_games(client: SteamClient, conn, steam_id: str):
                     details = client.get_app_details(appid)[str(appid)]["data"]
 
                     genres = [g["description"] for g in details.get("genres", [])]
+                    developers = details.get("developers", [])
+                    publishers = details.get("publishers", [])
                     metacritic = details.get("metacritic", {}).get("score")
                     total_achievements = details.get("achievements", {}).get("total", 0)
                     price_overview = details.get("price_overview")
@@ -56,11 +61,20 @@ def sync_owned_games(client: SteamClient, conn, steam_id: str):
 
                     cur.execute(
                         """
-                        INSERT INTO games (appid, title, release_date, price, genres, metacritic, total_achievements)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s)
-                        ON CONFLICT (appid) DO NOTHING
+                        INSERT INTO games (appid, title, release_date, price, genres, developers, publishers, metacritic, total_achievements)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (appid) DO UPDATE SET
+                            title = excluded.title,
+                            release_date = excluded.release_date,
+                            price = excluded.price,
+                            genres = excluded.genres, 
+                            developers = excluded.developers,
+                            publishers = excluded.publishers,
+                            metacritic = excluded.metacritic,
+                            total_achievements = excluded.total_achievements,
+                            updated_at = CURRENT_TIMESTAMP
                         """,
-                        (appid, details["name"], release_date_parsed, price, genres, metacritic, total_achievements)
+                        (appid, details["name"], release_date_parsed, price, genres, developers, publishers, metacritic, total_achievements)
                     )
                     conn.commit()
 

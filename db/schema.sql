@@ -20,6 +20,9 @@ CREATE TABLE games(
   positive_reviews INT,
   negative_reviews INT,
 
+  developers TEXT[] DEFAULT '{}',
+  publishers TEXT[] DEFAULT '{}',
+
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(), 
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -41,10 +44,38 @@ CREATE TABLE user_game (
 );
 
 CREATE TABLE bulk_user_game (
-    bulk_user_id BIGINT NOT NULL,
-    game_title VARCHAR(255) NOT NULL,
+  bulk_user_id BIGINT NOT NULL,
+  game_title VARCHAR(255) NOT NULL,
+  playtime_hours REAL NOT NULL,
 
-    playtime_hours REAL NOT NULL,
+  PRIMARY KEY (bulk_user_id, game_title)
+);
 
-    PRIMARY KEY (bulk_user_id, game_title)
+CREATE TABLE bulk_games (
+  appid INT PRIMARY KEY,
+  title TEXT,
+  release_date DATE,
+  price INT CHECK (price >= 0),
+  total_achievements INT DEFAULT 0,
+
+  genres TEXT[] DEFAULT '{}',
+  tags TEXT[] DEFAULT '{}',
+
+  metacritic INT,
+  positive_reviews INT,
+  negative_reviews INT,
+  developers TEXT[] DEFAULT '{}',
+  publishers TEXT[] DEFAULT '{}',
+
+  recommendations INT,
+
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE bulk_title_map (
+    game_title TEXT PRIMARY KEY,
+    appid INT NOT NULL REFERENCES bulk_games(appid),
+    match_method VARCHAR(20) NOT NULL,
+    match_score REAL
 );

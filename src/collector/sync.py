@@ -1,6 +1,8 @@
 from datetime import datetime
 import time
 
+from sqlalchemy import create_engine
+
 import psycopg2
 
 from src.collector.exceptions import SteamAPIError, StoreGameNotFound, AchievementsNotFound, ReviewsNotFound
@@ -14,6 +16,12 @@ def get_connection(host: str, port: int, dbname: str, user: str, password: str):
     except Exception as e:
         raise Exception(f"Database connection failed: {str(e)}")
 
+# we need an SQLAlchemy engine or pandas will complain.
+def get_engine(host: str, port: int, dbname: str, user: str, password: str):
+    try:
+        return create_engine(f"postgresql+psycopg2://{user}:{password}@{host}:{port}/{dbname}")
+    except Exception as e:
+        raise Exception(f"Engine creation failed: {str(e)}")
 
 def is_game_cached(conn, appid: int) -> bool:
     with conn.cursor() as cur:

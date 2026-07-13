@@ -1,8 +1,11 @@
+import os
 import pandas as pd
 import math
 
 from src.features.engagement import normalize_playtime
 from datetime import date
+
+FEATURES_CACHE_PATH = "../data/processed/bulk_player_features.parquet"
 
 def category_entropy(category_playtimes: dict[str, float]) -> float:
     total_playtime = sum(category_playtimes.values())
@@ -58,7 +61,7 @@ def build_player_features(engine, steam_id: str) -> dict:
     review_ratio = df["positive_reviews"] / total_reviews.where(total_reviews > 0)
     average_review_score = review_ratio.mean()
 
-    return {"median": median_playtime, "std": std_playtime, "genre_entropy": genre_entropy_value, "developer_entropy_value": developer_entropy_value, "average_game_age": average_game_age, "average_review_score": average_review_score}
+    return {"median": median_playtime, "std": std_playtime, "genre_entropy": genre_entropy_value, "developer_entropy": developer_entropy_value, "average_game_age": average_game_age, "average_review_score": average_review_score}
 
 def build_bulk_player_features(engine, bulk_user_id) -> dict:
     query = """
@@ -137,3 +140,14 @@ def build_all_bulk_player_features(engine) -> pd.DataFrame:
         rows.append(features)
 
     return pd.DataFrame(rows)
+
+def get_or_build_bulk_features(engine, force_rebuild: bool = False):
+    # build_all_bulk_player_features is quite expensive, so i decided to cache it since this specific data is
+    # deterministic. if any of bulk_user_game, bulk_games, or bulk_title_map change, this cache should be invalidated.
+    if not force_rebuild and os.path.exists(FEATURES_CACHE_PATH):
+        return pd.read_parquet(FEATURES_CACHE_PATH)
+
+    features = build_all_bulk_player_features(engine)
+    os.makedirs(os.path.dirname(FEATURES_CACHE_PATH), exist_ok=True)
+    features.to_parquet(FEATURES_CACHE_PATH)
+    return features

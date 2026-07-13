@@ -10,12 +10,14 @@ from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 
 from models.clustering import build_clustering_matrix, find_best_k, FEATURE_COLUMNS, assign_to_cluster, explain_cluster_assignment, build_live_vector
+from models.recommender import find_nearest_neighbors, recommend_games, explain_recommendation
 from src.collector.bulk_import import load_games_dataset
 from src.collector.steam_client import SteamClient
 from src.collector.sync import get_connection, sync_owned_games, get_engine
 from src.collector.title_matching import find_fuzzy_matches, build_title_map
 from src.features.engagement import update_engagement_score
-from src.features.player_features import build_player_features, build_bulk_player_features, build_all_bulk_player_features, get_or_build_bulk_features
+from src.features.player_features import build_player_features, build_bulk_player_features, \
+    build_all_bulk_player_features, get_or_build_bulk_features, get_owned_appids
 
 load_dotenv()
 
@@ -54,5 +56,19 @@ my_cluster = assign_to_cluster(kmeans, vector)
 print(f"Profile {os.environ["STEAMSENSE_TARGET_STEAMID"]} lands in cluster {my_cluster}")
 
 print(explain_cluster_assignment(matrix, vector, my_cluster).to_string())
+
+matrix_with_ids = matrix.copy()
+matrix_with_ids["bulk_user_id"] = complete_features["bulk_user_id"].values
+
+neighbors = find_nearest_neighbors(vector, matrix_with_ids, k=50)
+owned_appids = get_owned_appids(engine, os.environ["STEAMSENSE_TARGET_STEAMID"])
+
+recommendations = recommend_games(engine, neighbors, owned_appids, top_n=10)
+print(recommendations.to_string())
+
+top_appid = int(recommendations.iloc[0]["appid"])
+top_title = recommendations.iloc[0]["title"]
+print(f"\nWhy '{top_title}' (appid {top_appid}) was recommended:")
+print(explain_recommendation(engine, neighbors, top_appid).to_string())
 
 conn.close()

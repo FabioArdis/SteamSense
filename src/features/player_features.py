@@ -151,3 +151,11 @@ def get_or_build_bulk_features(engine, force_rebuild: bool = False):
     os.makedirs(os.path.dirname(FEATURES_CACHE_PATH), exist_ok=True)
     features.to_parquet(FEATURES_CACHE_PATH)
     return features
+
+def get_owned_appids(engine, steam_id: str) -> set[int]:
+    df = pd.read_sql(
+        "SELECT appid FROM user_game WHERE steam_id = %s",
+        engine,
+        params=(steam_id,)
+    )
+    return set(df["appid"])
